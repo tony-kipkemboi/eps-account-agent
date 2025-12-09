@@ -1,0 +1,87 @@
+# GitHub Actions workflow for deploying EPS Agent to Databricks
+# Triggered on push to main (prod) or develop (staging)
+
+name: Deploy EPS Agent
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'databricks/oai_reponses_agent/**'
+      - 'databricks.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment target'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+jobs:
+  validate:
+    name: Validate Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Validate bundle
+        run: databricks bundle validate
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: validate
+    if: github.ref == 'refs/heads/develop' || github.event.inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy to Staging
+        run: |
+          databricks bundle deploy --target staging
+
+      - name: Get deployment info
+        run: |
+          echo "✓ Deployed to staging"
+          databricks bundle summary --target staging
+
+  deploy-prod:
+    name: Deploy to Production
+    needs: validate
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy to Production
+        run: |
+          databricks bundle deploy --target prod
+
+      - name: Get deployment info
+        run: |
+          echo "✓ Deployed to production"
+          databricks bundle summary --target prod
+
