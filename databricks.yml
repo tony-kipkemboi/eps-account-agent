@@ -14,7 +14,7 @@ variables:
   model_name:
     default: eps_account_agent
   secret_scope:
-    default: eps_agent_scope
+    default: eps_agent
   llm_endpoint:
     default: databricks-gpt-5-mini
 
@@ -24,7 +24,7 @@ workspace:
 
 # Include agent code
 include:
-  - ./databricks/oai_reponses_agent/*.py
+  - ./agent/*.py
 
 # Deployment targets (environments)
 targets:
@@ -53,35 +53,6 @@ targets:
     variables:
       catalog: eps_intelligence
 
-# Resources to deploy
-resources:
-  # Register the model to Unity Catalog
-  models:
-    eps_agent_model:
-      name: ${var.catalog}.${var.schema}.${var.model_name}
-      description: "EPS Account Intelligence Agent - searches Glean for account information"
-      tags:
-        - key: project
-          value: eps_intelligence
-        - key: team
-          value: eps
-
-  # Model Serving Endpoint
-  serving_endpoints:
-    eps_agent_endpoint:
-      name: agents_${var.catalog}-${var.schema}-${var.model_name}
-      config:
-        served_entities:
-          - name: eps_agent
-            entity_name: ${var.catalog}.${var.schema}.${var.model_name}
-            entity_version: "1"  # Will be updated by CI/CD
-            workload_size: Small
-            scale_to_zero_enabled: true
-        auto_capture_config:
-          catalog_name: ${var.catalog}
-          schema_name: ${var.schema}
-          table_name_prefix: agent_logs
-      tags:
-        - key: project
-          value: eps_intelligence
-
+# Note: Agent serving endpoints are deployed via the deploy_notebook.py
+# using agents.deploy() which handles endpoint creation automatically.
+# DAB is used here for syncing code and managing environments.
